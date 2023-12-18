@@ -1,3 +1,5 @@
+--!native
+--!nonstrict
 type LookAt = {
 	Distances: { number }
 }
@@ -10,15 +12,16 @@ type Section = {
 
 type self = {
 	Sections: { Section },
-	PathLenght: number,
-	PathLookUp: { [Section]: { number } },
+	PathLength: number,
+	PathLookup: { [Section]: { number } },
 	TotalDistance: number,
 	SampleAmount: number,
 	PrecomputedCache: {
 		Positions: { Vector3 },
 		CFrames: { CFrame },
 	},
-	CurveSize: number
+	CurveSize: number,
+	ITERATION_AMOUNT: number
 }
 
 type Module = {
@@ -33,10 +36,10 @@ type Module = {
 	CalculateUniformCFrame: (self: Path, T: number) -> CFrame,
 	CalculateUniformPosition: (self: Path, T: number) -> Vector3,
 	_InterpolateTPath: (self: Path, T: number) -> Section,
-	_InterpolateT: (self: Path, Lookup: LookUp, T1: number) -> number,
+	_InterpolateT: (self: Path, Lookup: LookAt, T1: number) -> number,
 	_PrecomputeUniformPositions: (self: Path) -> (),
 	_CalculateLength: (self: Path, Positions: { Vector3 }) -> number,
-	_CreateSectionLookup: (self: Path, Section: Section) -> LookUp,
+	_CreateSectionLookup: (self: Path, Section: Section) -> LookAt,
 	_ClampDistance: (self: Path, Position1: Vector3, Position2: Vector3) -> number,
 	_Setup: (self: Path, StartingPositions: { Vector3 }) -> (),
 	_CalculatePathLength: (self: Path) -> (),
@@ -46,17 +49,16 @@ type Module = {
 local BezierPath = {} :: Module
 BezierPath.__index = BezierPath
 local DEFAULT_EPSILON = 100
-local ITERATION_AMONT = 0
 
-local function bez<T>(p0: T, p1: T, p2: T, t: number): T 
+local function bez(p0: Vector3, p1: Vector3, p2: Vector3, t: number): Vector3 
 	return p1 + (1-t)^2*(p0 - p1)+t^2*(p2 - p1)
 end
 
-local function bezder<T>(p0: T, p1: T, p2: T, t: number): T
+local function bezder(p0: Vector3, p1: Vector3, p2: Vector3, t: number): Vector3
 	return 2*(1 - t)*(p1-p0) + 2*t*(p2-p1)
 end
 
-local function lerp<T>(p0: T, p1: T, t: number): T
+local function lerp(p0: Vector3, p1: Vector3, t: number): Vector3
 	return p0 + t*(p1 - p0)
 end
 
@@ -74,6 +76,7 @@ function BezierPath.new(Waypoints: { Vector3 }, CurveSize: number): Path
 		CFrames = {}
 	}
 	newPath.CurveSize = math.clamp(CurveSize,0.1,3)
+	newPath.ITERATION_AMOUNT = 0
 	newPath:_Setup(Waypoints)
 
 	return newPath
@@ -116,18 +119,20 @@ function BezierPath:_CalculatePrecomputationCFrame(T: number): CFrame
 end
 
 function BezierPath:CalculateUniformCFrame(T: number): CFrame
-	local TranslatedIndex = math.clamp(math.floor(math.clamp(T,0,1) * (ITERATION_AMONT - 1) + 0.5),0,ITERATION_AMONT - 1)
+	local TranslatedIndex = math.min(math.floor(math.clamp(T,0,1) * self.ITERATION_AMONT),self.ITERATION_AMONT - 1)
 	local FirstSample = self.PrecomputedCache["CFrames"][TranslatedIndex]
-	local SecondSample = self.PrecomputedCache["CFrames"][math.clamp(TranslatedIndex + 1,0,ITERATION_AMONT - 1)]
+	local SecondSample = self.PrecomputedCache["CFrames"][math.min(TranslatedIndex + 1,self.ITERATION_AMONT - 1)]
+
 	local Progress = (T - FirstSample[2]) / (SecondSample[2] - FirstSample[2])
 
 	return FirstSample[1]:Lerp(SecondSample[1],Progress)
 end
 
 function BezierPath:CalculateUniformPosition(T: number): Vector3
-	local TranslatedIndex = math.floor(math.clamp(T,0,1) * (ITERATION_AMONT - 1) + 0.5)
+	local TranslatedIndex = math.min(math.floor(math.clamp(T,0,1) * self.ITERATION_AMONT),self.ITERATION_AMONT - 1)
 	local FirstSample = self.PrecomputedCache["Positions"][TranslatedIndex]
-	local SecondSample = self.PrecomputedCache["Positions"][math.clamp(TranslatedIndex + 1,0,ITERATION_AMONT - 1)]
+	local SecondSample = self.PrecomputedCache["Positions"][math.min(TranslatedIndex + 1,self.ITERATION_AMONT - 1)]
+
 	local Progress = (T - FirstSample[2]) / (SecondSample[2] - FirstSample[2])
 
 	return lerp(FirstSample[1],SecondSample[1],Progress)
@@ -143,7 +148,7 @@ function BezierPath:_InterpolateTPath(T: number): Section
 	return self.PathLookup[#self.PathLookup]
 end
 
-function BezierPath:_InterpolateT(Lookup: LookUp, T1: number): number
+function BezierPath:_InterpolateT(Lookup: LookAt, T1: number): number
 	local distances = Lookup.Distances
 	local n = #distances - 1 
 	local targetDistance = self.PathLength * T1
@@ -177,17 +182,17 @@ function BezierPath:_InterpolateT(Lookup: LookUp, T1: number): number
 end
 
 function BezierPath:_PrecomputeUniformPositions()
-	local step = 1 / (ITERATION_AMONT - 1)
+	local step = 1 / (self.ITERATION_AMONT - 1)
 
 	for t = 0, 1, step do
-		local index = math.floor(t * (ITERATION_AMONT - 1) + 0.5)
+		local index = math.floor(t * self.ITERATION_AMONT)
 		local CalculatedCFrame = self:_CalculatePrecomputationCFrame(t)
 
 		self.PrecomputedCache["CFrames"][index] = {CalculatedCFrame,t}
 		self.PrecomputedCache["Positions"][index] = {CalculatedCFrame.Position,t}
 	end
 
-	local index = math.floor(1 * (ITERATION_AMONT - 1) + 0.5)
+	local index = math.floor(1 * self.ITERATION_AMONT) - 1
 	local CalculatedCFrame = self:_CalculatePrecomputationCFrame(1)
 
 	self.PrecomputedCache["CFrames"][index] = {CalculatedCFrame,1}
@@ -206,7 +211,7 @@ function BezierPath:_CalculateLength(Positions: { Vector3 }): number
 	return Length
 end
 
-function BezierPath:_CreateSectionLookup(Section: Section): LookUp
+function BezierPath:_CreateSectionLookup(Section: Section): LookAt
 	local LookUp = {
 		Distances = {}
 	}
@@ -250,7 +255,7 @@ function BezierPath:_Setup(StartingPositions: { Vector3 })
 		local Positions = {
 			CurrentPosition - (CurrentPosition - PreviousPosition).Unit * self:_ClampDistance(CurrentPosition,PreviousPosition),
 			CurrentPosition - (CurrentPosition - NextPosition).Unit * self:_ClampDistance(CurrentPosition,NextPosition),
-			CurrentPosition - (CurrentPosition - NextPosition).Unit * self:_ClampDistance(CurrentPosition,NextPosition) * 1.1
+			CurrentPosition - (CurrentPosition - NextPosition).Unit * self:_ClampDistance(CurrentPosition,NextPosition)
 		}  
 
 		for j = 1,3 do
@@ -271,6 +276,7 @@ function BezierPath:_Setup(StartingPositions: { Vector3 })
 			newWaypoints[Index],
 			newWaypoints[Index + 1],
 		}
+
 		local Section = {
 			Positions = Positions,
 			Length = self:_CalculateLength(Positions),
@@ -287,7 +293,7 @@ function BezierPath:_Setup(StartingPositions: { Vector3 })
 
 	self:_CreatePathLookup()
 
-	ITERATION_AMONT = math.floor(self:GetPathLength() * 8)
+	self.ITERATION_AMONT = math.floor(self:GetPathLength() * 8)
 
 	self:_PrecomputeUniformPositions()
 end
