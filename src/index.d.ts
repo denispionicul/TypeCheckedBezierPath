@@ -38,3 +38,6 @@ interface Path {
 	 */
     VisualizePath(): void
 }
+
+declare const BezierPath: BezierPath.Constructor;
+export = BezierPath;

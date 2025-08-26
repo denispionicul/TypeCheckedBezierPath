@@ -2,3 +2,4 @@
 node_modules
 sourcemap.json
 out
+*.tgz
