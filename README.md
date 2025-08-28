@@ -1,3 +1,5 @@
+(This is the Roblox TS version of this module, any issues or bugs that aren't to do with the type definitions should go to the original repository, not this fork)
+
 # ABOUT
 BezierPath is an easy to use bezier spline module, designed to be used for TD games and general paths while being optimizied for large scale uses.
 
