@@ -1,7 +1,7 @@
 {
   "name": "@rbxts/bezierpath",
-  "version": "2.0.4",
-  "description": "BezierPath is an easy to use bezier spline module, designed to be used for TD games and general paths while being optimizied for large scale uses.",
+  "version": "2.0.5",
+  "description": "BezierPath is an easy to use bezier spline module, designed to be used for TD games and general paths while being optimized for large scale uses.",
   "main": "src/init.luau",
   "scripts": {
     "build": "rbxtsc --rojo dev.project.json"
@@ -40,6 +40,5 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "@rbxts/bezierpath": "file:rbxts-bezierpath-2.0.3.tgz"
   }
 }

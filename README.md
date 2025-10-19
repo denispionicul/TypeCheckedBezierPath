@@ -15,22 +15,23 @@ To view the API and usage, go [here](https://github.com/omrezkeypie/BezierPath/w
 ## Example
 
 A code snippet showing how to set up and use BezierPath.
-```lua
-local BezierPath = "Path to the module"
-local Positions = {
-    Vector3.new(0,10,0),
-    Vector3.new(10,0,0),
-    Vector3.new(10,10,10)
-}
-local NewPath = BezierPath.new(Positions,3)
-local Part = Instance.new("Part",workspace)
-Part.Size = Vector3.new(1,1,1)
+```ts
+import BezierPath from "@rbxts/bezierpath"
+
+const Positions = [
+    new Vector3(0,10,0),
+    new Vector3(10,0,0),
+    new Vector3(10,10,10)
+]
+const NewPath = new BezierPath(Positions,3)
+const Part = new Instance("Part",workspace)
+Part.Size = new Vector3(1,1,1)
 Part.Anchored = true
 
-for t = 0,1,1/100 do
-    Part.CFrame = NewPath:CalculateUniformCFrame(t)
+for (const t = 0 of $range(1,1/100)) {
+    Part.CFrame = NewPath.CalculateUniformCFrame(t)
     task.wait(0.1)
-end
+}
 ```
 A short video showing BezierPath.
 
