@@ -28,7 +28,7 @@ const Part = new Instance("Part",workspace)
 Part.Size = new Vector3(1,1,1)
 Part.Anchored = true
 
-for (const t = 0 of $range(1,1/100)) {
+for (const t of $range(0, 1, 1/100)) {
     Part.CFrame = NewPath.CalculateUniformCFrame(t)
     task.wait(0.1)
 }
